@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "env": {
+                "ZOOM_ACCOUNT_ID": "lgeQ2DagQKmYVx3TxDrBeQ",
+                "ZOOM_CLIENT_ID": "dAZWuDxwTVuTFnfQ7dBGJA",
+                "ZOOM_CLIENT_SECRET": "cu4d2zJSbL8Au7jAc6kvY1m1xAbSlOV4",
+                "OPENAI_API_KEY": "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"
+            }
+        }
+    ]
+}
