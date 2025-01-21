@@ -49,23 +49,28 @@ ROLE_REQUIREMENTS = {
     """
 }
 
+def match_skills_to_role(resume_text, role):
+    """Match candidate's skills to role requirements and calculate match score."""
+    required_skills = ROLE_REQUIREMENTS[role]["skills"]
+    experience_keywords = ROLE_REQUIREMENTS[role]["experience_keywords"]
+    
+    # Convert resume text to lowercase
+    resume_text = resume_text.lower()
+    
+    # Count skill matches in resume text
+    skill_matches = sum(1 for skill in required_skills if skill.lower() in resume_text)
+    
+    # Count experience-related matches (projects, experience, etc.)
+    experience_matches = sum(1 for keyword in experience_keywords if keyword.lower() in resume_text)
 
-# Helper Functions
-def extract_text_from_pdf(pdf_file) -> str:
-    """Extract text from a PDF file."""
-    pdf_reader = PyPDF2.PdfReader(pdf_file)
-    return "".join([page.extract_text() for page in pdf_reader.pages])
+    # Calculate match score as a weighted average (skills match + experience match)
+    skill_score = skill_matches / len(required_skills)
+    experience_score = experience_matches / len(experience_keywords)
 
-def pdf_to_png(pdf_file):
-    """Convert PDF pages to PNG images for display."""
-    pdf_file.seek(0)
-    pdf_bytes = pdf_file.read()
-    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-    for i in range(doc.page_count):
-        page = doc.load_page(i)
-        pix = page.get_pixmap()
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        st.image(img, caption=f"Page {i+1}", use_container_width=True)
+    # Total match score (out of 1)
+    total_score = (skill_score * 0.7) + (experience_score * 0.3)  # 70% weight on skills, 30% on experience
+
+    return total_score
 
 def analyze_resume(resume_text: str, role: str) -> tuple[bool, str]:
     """Analyze resume and match with role requirements."""
@@ -104,30 +109,135 @@ def send_email(sender_email, sender_password, receiver_email, subject, body):
     except Exception as e:
         return f"Failed to send email: {str(e)}"
 
+
+
 def configure_sidebar():
     """Configure sidebar settings."""
     st.sidebar.header("Configuration")
 
-    config = {
-        "openai_api_key": st.sidebar.text_input("OpenAI API Key", type="password"),
-        "zoom_account_id": st.sidebar.text_input("Zoom Account ID", type="password"),
-        "zoom_client_id": st.sidebar.text_input("Zoom Client ID", type="password"),
-        "zoom_client_secret": st.sidebar.text_input("Zoom Client Secret", type="password"),
-        "sender_email": st.sidebar.text_input("Sender Email"),
-        "email_app_password": st.sidebar.text_input("Email App Password", type="password"),
-        "company_name": st.sidebar.text_input("Company Name")
+    # Initialize session state values only if not already initialized
+    if "sidebar_openai_api_key" not in st.session_state:
+        st.session_state["sidebar_openai_api_key"] = ""
+    if "sidebar_zoom_account_id" not in st.session_state:
+        st.session_state["sidebar_zoom_account_id"] = ""
+    if "sidebar_zoom_client_id" not in st.session_state:
+        st.session_state["sidebar_zoom_client_id"] = ""
+    if "sidebar_zoom_client_secret" not in st.session_state:
+        st.session_state["sidebar_zoom_client_secret"] = ""
+    if "sidebar_sender_email" not in st.session_state:
+        st.session_state["sidebar_sender_email"] = ""
+    if "sidebar_email_app_password" not in st.session_state:
+        st.session_state["sidebar_email_app_password"] = ""
+    if "sidebar_company_name" not in st.session_state:
+        st.session_state["sidebar_company_name"] = ""
+
+    # Flag to reset configuration
+    if "reset_config" not in st.session_state:
+        st.session_state["reset_config"] = False
+
+    # Reset configuration button
+    if st.sidebar.button("Reset Configuration"):
+        # Set the flag to trigger reset
+        st.session_state["reset_config"] = True
+        st.rerun()
+
+    # Set widget values based on reset flag
+    if st.session_state["reset_config"]:
+        st.session_state["sidebar_openai_api_key"] = ""
+        st.session_state["sidebar_zoom_account_id"] = ""
+        st.session_state["sidebar_zoom_client_id"] = ""
+        st.session_state["sidebar_zoom_client_secret"] = ""
+        st.session_state["sidebar_sender_email"] = ""
+        st.session_state["sidebar_email_app_password"] = ""
+        st.session_state["sidebar_company_name"] = ""
+
+    # Define the widgets, using session state values as the default value
+    openai_api_key = st.sidebar.text_input(
+        "OpenAI API Key", 
+        type="password", 
+        key="sidebar_openai_api_key",
+        value=st.session_state["sidebar_openai_api_key"]
+    )
+    zoom_account_id = st.sidebar.text_input(
+        "Zoom Account ID", 
+        type="password", 
+        key="sidebar_zoom_account_id",
+        value=st.session_state["sidebar_zoom_account_id"]
+    )
+    zoom_client_id = st.sidebar.text_input(
+        "Zoom Client ID", 
+        type="password", 
+        key="sidebar_zoom_client_id",
+        value=st.session_state["sidebar_zoom_client_id"]
+    )
+    zoom_client_secret = st.sidebar.text_input(
+        "Zoom Client Secret", 
+        type="password", 
+        key="sidebar_zoom_client_secret",
+        value=st.session_state["sidebar_zoom_client_secret"]
+    )
+    sender_email = st.sidebar.text_input(
+        "Sender Email", 
+        key="sidebar_sender_email",
+        value=st.session_state["sidebar_sender_email"]
+    )
+    email_app_password = st.sidebar.text_input(
+        "Email App Password", 
+        type="password", 
+        key="sidebar_email_app_password",
+        value=st.session_state["sidebar_email_app_password"]
+    )
+    company_name = st.sidebar.text_input(
+        "Company Name", 
+        key="sidebar_company_name",
+        value=st.session_state["sidebar_company_name"]
+    )
+
+    # Reset the flag after the reset action
+    if st.session_state["reset_config"]:
+        st.session_state["reset_config"] = False
+
+    return {
+        "openai_api_key": openai_api_key,
+        "zoom_account_id": zoom_account_id,
+        "zoom_client_id": zoom_client_id,
+        "zoom_client_secret": zoom_client_secret,
+        "sender_email": sender_email,
+        "email_app_password": email_app_password,
+        "company_name": company_name,
     }
 
-    if st.sidebar.button("Reset Configuration"):
-        st.session_state.clear()
-        st.experimental_rerun()
+# Call the function
+config = configure_sidebar()
 
-    return config
+
+def extract_text_from_pdf(pdf_file) -> str:
+    """Extract text from a PDF file."""
+    pdf_reader = PyPDF2.PdfReader(pdf_file)
+    return "".join([page.extract_text() for page in pdf_reader.pages])
+
+def pdf_to_png(pdf_file):
+    """Convert PDF pages to PNG images for display."""
+    pdf_file.seek(0)
+    pdf_bytes = pdf_file.read()
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    for i in range(doc.page_count):
+        page = doc.load_page(i)
+        pix = page.get_pixmap()
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        st.image(img, caption=f"Page {i+1}", use_container_width=True)
 
 def download_button_with_icon(pdf_file):
     """Display a download button for the resume with an icon."""
+    # Reset the file pointer to the beginning
+    pdf_file.seek(0)
+    
+    # Read the PDF bytes
     pdf_bytes = pdf_file.read()
+    
+    # Encode the PDF bytes to Base64
     encoded_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
+    
     col1, col2 = st.columns([3, 1])
 
     with col1:
@@ -140,12 +250,20 @@ def download_button_with_icon(pdf_file):
             f'<button style="font-size: 16px;">&#8595; Download Resume</button></a>',
             unsafe_allow_html=True
         )
+    
+    # Instructions for the user
+    st.markdown("### Instructions:")
+    st.write("After downloading, please open the 'resume.pdf' file to review your resume.")
+    
+    # Instructions for the user
+    st.markdown("### Instructions:")
+    st.write("After downloading, please open the 'resume.pdf' file to review your resume.")
 
 def initialize_metrics():
     if 'metrics' not in st.session_state:
         st.session_state.metrics = {
             'total_resumes_uploaded': 0,
-            'selected_candidates': 0,
+             'selected_candidates': 0,
             'interviews_scheduled': 0,
             'applications_by_role': {role: 0 for role in ROLE_REQUIREMENTS}
         }
@@ -159,14 +277,24 @@ def update_metrics(role, is_selected):
 
 def show_analytics():
     st.header("Recruitment Analytics Dashboard")
+    
+    # Fetch metrics from session state
     metrics = st.session_state.metrics
+    
+    # Display key metrics
     st.metric(label="Total Resumes Uploaded", value=metrics['total_resumes_uploaded'])
     st.metric(label="Total Selected Candidates", value=metrics['selected_candidates'])
     st.metric(label="Total Interviews Scheduled", value=metrics['interviews_scheduled'])
+    
+    # Display role-wise applications
     role_counts = pd.DataFrame({
         'Role': list(metrics['applications_by_role'].keys()),
         'Applications': list(metrics['applications_by_role'].values())
     })
+    
+    st.subheader("Applications by Role")
+    st.dataframe(role_counts)  # Display the role_counts DataFrame as a table
+
     st.subheader("Applications by Role")
     fig = px.bar(role_counts, x='Role', y='Applications', title='Applications per Role')
     st.plotly_chart(fig)
@@ -221,13 +349,10 @@ def generate_assessment_url(role):
         return "https://docs.google.com/forms/d/e/1FAIpQLScIMEtmyc6HquDLB7ir0VQWEFOhY5qwf9snYiUoBJwG1x7D_w/viewform?usp=dialog"
     else:
         return "https://coding-assessment-platform.com"
-
-
-
 def main():
     st.title("AI Recruitment System")
     st.markdown("Please configure the following in the sidebar: Email Sender, Email Password, Company Name")
-    config = configure_sidebar()
+    
     initialize_metrics()
     st.sidebar.button("Show Analytics", on_click=show_analytics)
 
@@ -309,7 +434,7 @@ def main():
             st.subheader(f"Coding Assessment for {role.replace('_', ' ').title()}")
             st.markdown(f"[Start Coding Assessment]({assessment_url})")
             st.write("This link will take you to the coding assessment platform with 10 questions based on the selected role.")
-
+    
     resume_file = st.file_uploader("Upload Resume", type=["pdf"])
     if resume_file:
         resume_text = extract_text_from_pdf(resume_file)
@@ -364,8 +489,8 @@ def main():
 
                     if is_selected:
                         interview_date = datetime.now() + timedelta(days=3)  # Interview in 3 days
-                        meeting_id = "768 918 9337"  # Replace with actual meeting ID
-                        password = "392039"  # Replace with the meeting password if applicable
+                        meeting_id = "6113963729"  # Replace with actual meeting ID
+                        password = "769575"  # Replace with the meeting password if applicable
                         zoom_link = f"https://zoom.us/j/{meeting_id}?pwd={password}"
 
                         interview_subject = f"Interview Scheduled for {role} Role"
